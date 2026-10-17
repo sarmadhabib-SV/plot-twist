@@ -7,26 +7,23 @@ Plot Twist — AI Murder Mystery Party Game
 https://plot-twist-nfyg.onrender.com
 
 ## Cover image
-`media-generation-plot-twist-cover-0-7136f2ce-98ad-44f0-9492-b0712d52cf33.webp`
-(in this repo's parent media folder: `~/workspace/plot-twist/`)
+`plot-twist-cover.webp` (in this repo)
 
 ## Description (paste into the mission submission)
 Plot Twist is a multiplayer murder mystery party game run by an AI game
-master. 2–8 players join from their phones with a 4-letter room code —
-no signup, no app download.
+master. 2 to 8 players join from their phones with a 4-letter room code.
+No signup. No app.
 
-How a night goes: the host picks a vibe (Classic Noir, Haunted, Sci-Fi,
-Comedy). The game master deals a fresh case — victim, timeline, three
-clues, one red herring — and secret character cards, one culprit hiding
-at the table. Short on humans? The AI fills the empty chairs with
-suspects you can interrogate in character.
+Here's how a night goes. The host picks a vibe: Classic Noir, Haunted,
+Sci-Fi, or Comedy. The game master deals a fresh case every time. A
+victim, a timeline, three clues, one red herring. Everyone gets a secret
+character card, and one of you is the killer. Short on humans? The AI
+fills the empty chairs with suspects you can interrogate in character.
 
-Three timed investigation rounds, open interrogation (the AI roleplays
-its suspects and answers meta questions as game master without
-spoiling), then accusation and vote — majority wins, ties let the
-killer walk. The accused gets a final plea before the dramatic reveal.
+Three timed investigation rounds. Open interrogation. Then you accuse
+and vote. Majority wins. Ties let the killer walk. The accused gets a
+final plea before the reveal.
 
-Built with Node.js + Socket.IO and OpenAI, deployed on Render. It runs
-at zero cost: a hand-written 12-mystery pack powers the game with no API
-spend, and dropping in an OpenAI key upgrades it to infinite
-AI-generated cases.
+Built with Node.js, Socket.IO, and OpenAI, deployed on Render. It runs
+at zero cost. A hand-written 12-mystery pack powers the game with no API
+spend, and an OpenAI key upgrades it to infinite AI-generated cases.
