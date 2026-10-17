@@ -1,0 +1,16 @@
+{
+  "name": "plot-twist",
+  "version": "0.1.0",
+  "description": "Plot Twist — AI game-mastered murder mystery party game",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.1",
+    "openai": "^5.0.0",
+    "dotenv": "^16.4.5"
+  }
+}
