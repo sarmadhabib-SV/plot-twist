@@ -2,6 +2,7 @@
 // Every call has a timeout and a graceful fallback so the game never
 // soft-locks, even with no API key or a failed request.
 import OpenAI from 'openai';
+import { getScenario, findScenarioByTruth } from './scenarios.js';
 
 const MODEL = 'gpt-4o-mini';
 const TIMEOUT_MS = 25000;
@@ -179,7 +180,7 @@ export async function narrate(beat, context = {}) {
 
 export async function roleplay(suspect, question, truth) {
   const c = getClient();
-  if (!c) return fallbackRoleplay(suspect);
+  if (!c) return fallbackRoleplay(suspect, question, truth);
   const culpritNote = suspect.isCulprit
     ? 'You ARE the murderer. Be evasive but fair: never confess outright, deflect gently, ' +
       'cast mild doubt elsewhere, but do not invent lies about verifiable facts that would break the game.'
@@ -204,9 +205,9 @@ export async function roleplay(suspect, question, truth) {
       })
     );
     const text = (resp.choices?.[0]?.message?.content || '').trim();
-    return text || fallbackRoleplay(suspect);
+    return text || fallbackRoleplay(suspect, question, truth);
   } catch {
-    return fallbackRoleplay(suspect);
+    return fallbackRoleplay(suspect, question, truth);
   }
 }
 
@@ -216,7 +217,7 @@ export async function roleplay(suspect, question, truth) {
 
 export async function gameMaster(question, truth, stateSummary = '') {
   const c = getClient();
-  if (!c) return fallbackGameMaster();
+  if (!c) return fallbackGameMaster(question, truth, stateSummary);
   try {
     const resp = await withTimeout(
       c.chat.completions.create({
@@ -241,9 +242,9 @@ export async function gameMaster(question, truth, stateSummary = '') {
       })
     );
     const text = (resp.choices?.[0]?.message?.content || '').trim();
-    return text || fallbackGameMaster();
+    return text || fallbackGameMaster(question, truth, stateSummary);
   } catch {
-    return fallbackGameMaster();
+    return fallbackGameMaster(question, truth, stateSummary);
   }
 }
 
@@ -285,44 +286,43 @@ export async function plea(suspect, truth) {
 // ---------------------------------------------------------------------------
 
 const EXTRA_SUSPECTS = [
-  { name: 'Theo Park', occupation: 'sound technician', relation: 'ran the club PA that night', secret: 'He has been bootlegging live recordings of the club sets.', isCulprit: false },
-  { name: 'Grace Liu', occupation: 'food critic', relation: 'reviewing the club that night', secret: 'She is the victim\'s estranged niece, and nobody knows.', isCulprit: false },
-  { name: 'Big Mike Russo', occupation: 'bouncer', relation: 'worked the door all night', secret: 'He let someone in through the back for fifty bucks.', isCulprit: false },
-  { name: 'Nina Petrova', occupation: 'coat-check attendant', relation: 'saw everyone come and go', secret: 'She pocketed a patron\'s lost diamond earring.', isCulprit: false },
+  { name: "Theo Park", occupation: "sound technician", relation: "was working nearby that night",
+    secret: "He has been bootlegging live recordings for months.", isCulprit: false,
+    persona: "Jittery, technical, hides behind jargon.",
+    tells: [
+      ["where|night|doing", "At the board, patching cables. The cables will vouch for me."],
+      ["steal|bootleg|record", "Okay, I record shows. For posterity! Victimless crime, excellent audio quality."],
+    ] },
+  { name: "Grace Liu", occupation: "food critic", relation: "happened to be there that night",
+    secret: "She is the victim's estranged niece, and nobody knows.", isCulprit: false,
+    persona: "Dry, observant, reviews people like restaurants.",
+    tells: [
+      ["niece|family|related", "Fine. Estranged niece. We had not spoken in years. That is not a motive, that is a family."],
+      ["where|night", "At my table, taking notes. I review everything. Even murder, apparently. Two stars."],
+    ] },
+  { name: "Big Mike Russo", occupation: "bouncer", relation: "worked the door all night",
+    secret: "He let someone in through the back for fifty bucks.", isCulprit: false,
+    persona: "Mountainous, soft-spoken, gentle giant.",
+    tells: [
+      ["door|back|fifty", "I let one person in the back. Fifty bucks. I needed it. It was not the killer. Probably."],
+      ["where|night", "On the door. All night. My feet can confirm. They are still angry about it."],
+    ] },
+  { name: "Nina Petrova", occupation: "coat-check attendant", relation: "saw everyone come and go",
+    secret: "She pocketed a patron's lost diamond earring.", isCulprit: false,
+    persona: "Sharp-eyed, fast-talking, misses nothing.",
+    tells: [
+      ["earring|diamond|pocketed", "It was on the floor! Finders keepers! I was going to turn it in. Eventually."],
+      ["saw|come and go", "I see everyone. It is the job. Coats in, secrets out."],
+    ] },
 ];
 
 function fallbackScenario(vibe, n) {
-  const vibeName = VIBE_NAMES[vibe] || VIBE_NAMES.noir;
-  const suspects = [
-    { name: 'Lena "Velvet" Cross', occupation: 'jazz singer', relation: 'the victim\'s former lover', secret: 'She had been skimming cash from the door take for months.', isCulprit: false },
-    { name: 'Marcus Bell', occupation: 'bartender', relation: 'owed the victim $4,000 in gambling debts', secret: 'He pocketed the back-door camera\'s memory card to hide that he\'d been stealing bottles.', isCulprit: false },
-    { name: 'Priya Anand', occupation: 'business partner', relation: 'co-owned the club with the victim', secret: 'The big insurance policy on the victim was the victim\'s own idea, to protect the club.', isCulprit: false },
-    { name: 'Eddie "Fingers" Malone', occupation: 'piano player', relation: 'the victim fired his brother last year', secret: 'He slipped a threatening note under the victim\'s door that night as a prank — then decided a prank wasn\'t enough.', isCulprit: true },
-    { name: 'Rosa Delgado', occupation: 'cleaning woman', relation: 'found the body', secret: 'She moved the glass before police arrived to protect her nephew, who buses tables off the books.', isCulprit: false },
-  ];
+  const sc = getScenario(vibe, n);
+  const suspects = sc.suspects.map((s) => ({ ...s }));
   while (suspects.length < n) {
-    suspects.push({ ...EXTRA_SUSPECTS[(suspects.length - 5) % EXTRA_SUSPECTS.length] });
+    suspects.push({ ...EXTRA_SUSPECTS[(suspects.length - 6) % EXTRA_SUSPECTS.length] });
   }
-  return {
-    victim: 'Vincent "Vinnie" Marlowe, 58, owner of The Gilded Note jazz club',
-    setting: `The Gilded Note jazz club, 11:47 PM, rain hammering the awning — a ${vibeName} kind of night.`,
-    method: 'Poisoned — cyanide slipped into his nightly whiskey sour.',
-    timeline: [
-      '9:00 PM — doors open, the last set crowd files in.',
-      '10:12 PM — the back-door camera dies. Someone knew the blind spots.',
-      '10:15 PM — muffled arguing from backstage. Then silence.',
-      '11:30 PM — Vinnie drinks the whiskey sour brought up from the bar.',
-      '11:47 PM — mid-song, Vinnie clutches his throat and collapses.',
-    ],
-    clues: [
-      'The highball glass smells faintly of bitter almonds — but the bar\'s well whiskey doesn\'t.',
-      'A torn cocktail napkin clutched in the victim\'s fist reads "...meet me at midni—" in hurried ink.',
-      'The back-door camera died at 10:12 PM — and its memory card is missing entirely.',
-    ],
-    redHerring: 'The business partner took out a large life insurance policy on the victim last month.',
-    truth: 'Eddie "Fingers" Malone slipped cyanide from the pest-control locker into Vinnie\'s whiskey sour during the 10:12 camera blackout, settling the score for his fired brother.',
-    suspects: suspects.slice(0, n),
-  };
+  return { ...sc, suspects: suspects.slice(0, n) };
 }
 
 function fallbackNarrate(beat, context = {}) {
@@ -333,23 +333,56 @@ function fallbackNarrate(beat, context = {}) {
       return `The detective holds it up to the light. "${context.clue || 'A clue surfaces.'}" A small thing. Murders have hinged on smaller.`;
     case 'round':
       return `Round ${context.round || ''} of the investigation begins. The clock is ticking, and the lies are getting thinner.`;
-    case 'reveal':
+    case 'reveal': {
+      const sc = findScenarioByTruth(context.truth);
+      if (sc && sc.reveal) return sc.reveal;
       return `The truth, at last: ${context.truth || 'the culprit is unmasked'}. The clues were there all along — you just had to look sideways at them.`;
+    }
     default:
       return 'The night deepens. So does the mystery.';
   }
 }
 
-function fallbackRoleplay(suspect) {
-  const name = suspect?.name || 'The suspect';
-  return `${name} shifts uncomfortably. "I've told the detective everything I know. Ask me something specific — about that night, about the victim — and I'll answer straight."`;
+function fallbackRoleplay(suspect, question = '', truth = '') {
+  const name = (suspect && suspect.name) || 'The suspect';
+  const q = String(question).toLowerCase();
+  const sc = findScenarioByTruth(truth);
+  const full = sc ? sc.suspects.find((s) => s.name === name) : null;
+  const tells = (full && full.tells) || (suspect && suspect.tells) || [];
+  for (const pair of tells) {
+    const keys = String(pair[0]).toLowerCase().split('|');
+    if (keys.some((w) => w.trim() && q.includes(w.trim()))) return pair[1];
+  }
+  if (suspect && suspect.isCulprit) {
+    return `${name} smiles thinly. "Interesting question. I'd look at what people DID that night, not what they say now. Actions leave marks; words don't."`;
+  }
+  return `${name} shrugs. "I've told you everything I know. Ask me about that night, the victim, or what I saw — I'll answer straight."`;
 }
 
-function fallbackGameMaster() {
+function fallbackGameMaster(question = '', truth = '', stateSummary = '') {
+  const q = String(question).toLowerCase();
+  const sc = findScenarioByTruth(truth);
+  if (/who (did|killed)|culprit|murderer|is it\b/.test(q)) {
+    return 'I can\'t name the killer — that\'s your job, detective. Ask who had the means, who had a reason, and whose story wobbles when you press the small details.';
+  }
+  if (sc) {
+    const named = sc.suspects.find((s) => {
+      const ln = s.name.toLowerCase();
+      const last = ln.split(' ').pop().replace(/["']/g, '');
+      return q.includes(ln) || (last.length > 3 && q.includes(last));
+    });
+    if (named) {
+      return `${named.name} — ${named.occupation}, ${named.relation}. Press them on the details: where exactly they were, and what they'd lose if the truth came out. Liars rehearse the big story, never the small ones.`;
+    }
+    if (/clue|evidence|hint|stuck|help/.test(q)) {
+      const clue = sc.clues[Math.floor(Math.random() * sc.clues.length)];
+      return `Re-read this one slowly: "${clue}" Now ask who it points at — and who it conveniently lets off the hook.`;
+    }
+  }
   return 'Trust the clues, detective. Compare what people say against what was found — and watch who changes the subject.';
 }
 
 function fallbackPlea(suspect) {
-  const name = suspect?.name || 'The accused';
+  const name = (suspect && suspect.name) || 'The accused';
   return `"${name} looks every one of you in the eye. "I'm innocent — I swear it. Look at the clues, not at me. You've got one chance to get this right."`;
 }
