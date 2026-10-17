@@ -55,7 +55,10 @@ short-handed, and reveals the truth at the end. No two games are ever alike.
 - `gameMaster(question, scenarioTruth, gameState)` → answers rules/meta
   questions and gives hint nudges without revealing the culprit.
 - All AI output must be fast (<6s) and short (mobile screens). Fallback:
-  pre-written backup scenario if the API fails mid-game.
+  zero-API mode draws from a hand-crafted 12-scenario pack
+  (`server/scenarios.js`, 3 per vibe) with scripted in-character
+  interrogation answers, spoiler-free game-master hints, and full reveal
+  narrations — the game is fully playable with no API key at all.
 
 ## Tech
 - **Server**: Node.js + Socket.IO (rooms, events, timers). Serves the client.
@@ -63,7 +66,8 @@ short-handed, and reveals the truth at the end. No two games are ever alike.
   No login, no signup — name + room code only.
 - **Deploy**: one unit (server serves static client). Target: Render free
   tier (WebSocket-friendly). Cold starts acceptable.
-- **Cost**: ~$0.02–0.05 of OpenAI usage per game.
+- **Cost**: $0 in zero-API mode. With OpenAI credits, ~$0.02–0.05 of
+  API usage per game for infinite AI-generated mysteries.
 
 ## Anti-frustration rules
 - Game must be joinable and playable in under 60 seconds from landing.
